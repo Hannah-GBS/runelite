@@ -29,7 +29,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +56,6 @@ import net.runelite.client.plugins.timetracking.clocks.ClockManager;
 import net.runelite.client.plugins.timetracking.farming.FarmingContractManager;
 import net.runelite.client.plugins.timetracking.farming.FarmingTracker;
 import net.runelite.client.plugins.timetracking.hunter.BirdHouseTracker;
-import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
@@ -101,6 +99,8 @@ public class TimeTrackingPlugin extends Plugin
 
 	private ScheduledFuture panelUpdateFuture;
 
+	private ScheduledFuture notifierFuture;
+
 	private TimeTrackingPanel panel;
 
 	private NavigationButton navButton;
@@ -138,6 +138,7 @@ public class TimeTrackingPlugin extends Plugin
 		clientToolbar.addNavigation(navButton);
 
 		panelUpdateFuture = executorService.scheduleAtFixedRate(this::updatePanel, 200, 200, TimeUnit.MILLISECONDS);
+		notifierFuture = executorService.scheduleAtFixedRate(this::checkCompletion, 0, 10, TimeUnit.SECONDS);
 	}
 
 	@Override
@@ -152,6 +153,7 @@ public class TimeTrackingPlugin extends Plugin
 			panelUpdateFuture = null;
 		}
 
+		notifierFuture.cancel(true);
 		clientToolbar.removeNavigation(navButton);
 		infoBoxManager.removeInfoBox(farmingContractManager.getInfoBox());
 		farmingContractManager.setInfoBox(null);
@@ -255,8 +257,7 @@ public class TimeTrackingPlugin extends Plugin
 		}
 	}
 
-	@Schedule(period = 10, unit = ChronoUnit.SECONDS)
-	public void checkCompletion()
+	private void checkCompletion()
 	{
 		boolean birdHouseDataChanged = birdHouseTracker.checkCompletion();
 
